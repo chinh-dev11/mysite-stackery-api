@@ -1,0 +1,200 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+Resources:
+  getApps:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-getApps
+      Description: !Sub
+        - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
+        - ResourceName: getApps
+      CodeUri: src/getApps
+      Handler: index.handler
+      Runtime: nodejs12.x
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Policies:
+        - AWSXrayWriteOnlyAccess
+        - DynamoDBCrudPolicy:
+            TableName: !Ref mysiteTable
+      Events:
+        mysiteStackeryApiGETapps:
+          Type: Api
+          Properties:
+            Path: /apps
+            Method: GET
+            RestApiId: !Ref mysiteStackeryApi
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref mysiteTable
+          TABLE_ARN: !GetAtt mysiteTable.Arn
+  getCerts:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-getCerts
+      Description: !Sub
+        - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
+        - ResourceName: getCerts
+      CodeUri: src/getCerts
+      Handler: index.handler
+      Runtime: nodejs12.x
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Policies:
+        - AWSXrayWriteOnlyAccess
+        - DynamoDBCrudPolicy:
+            TableName: !Ref mysiteTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref mysiteTable
+      Events:
+        mysiteStackeryApiGETcerts:
+          Type: Api
+          Properties:
+            Path: /certs
+            Method: GET
+            RestApiId: !Ref mysiteStackeryApi
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref mysiteTable
+          TABLE_ARN: !GetAtt mysiteTable.Arn
+          TABLE_NAME_2: !Ref mysiteTable
+          TABLE_ARN_2: !GetAtt mysiteTable.Arn
+  mysiteTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: Section
+          AttributeType: S
+        - AttributeName: DateCompleted
+          AttributeType: S
+        - AttributeName: Type
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: Section
+          KeyType: HASH
+        - AttributeName: DateCompleted
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: TypeIndex
+          KeySchema:
+            - AttributeName: Type
+              KeyType: HASH
+            - AttributeName: DateCompleted
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+  addItem:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-addItem
+      Description: !Sub
+        - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
+        - ResourceName: addItem
+      CodeUri: src/addItem
+      Handler: index.handler
+      Runtime: nodejs12.x
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Policies:
+        - AWSXrayWriteOnlyAccess
+        - DynamoDBCrudPolicy:
+            TableName: !Ref mysiteTable
+      Events:
+        mysiteStackeryApiPOSTaddItem:
+          Type: Api
+          Properties:
+            Path: /addItem
+            Method: POST
+            RestApiId: !Ref mysiteStackeryApi
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref mysiteTable
+          TABLE_ARN: !GetAtt mysiteTable.Arn
+  updateItem:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-updateItem
+      Description: !Sub
+        - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
+        - ResourceName: updateItem
+      CodeUri: src/updateItem
+      Handler: index.handler
+      Runtime: nodejs12.x
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Policies:
+        - AWSXrayWriteOnlyAccess
+        - DynamoDBCrudPolicy:
+            TableName: !Ref mysiteTable
+      Events:
+        mysiteStackeryApiPUTupdateItem:
+          Type: Api
+          Properties:
+            Path: /updateItem
+            Method: PUT
+            RestApiId: !Ref mysiteStackeryApi
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref mysiteTable
+          TABLE_ARN: !GetAtt mysiteTable.Arn
+  mysiteStackeryApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub
+        - ${ResourceName} From Stack ${StackTagName} Environment ${EnvironmentTagName}
+        - ResourceName: mysiteStackeryApi
+      StageName: !Ref EnvironmentAPIGatewayStageName
+      DefinitionBody:
+        swagger: '2.0'
+        info: {}
+        paths:
+          /apps:
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${getApps.Arn}/invocations
+              responses: {}
+          /certs:
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${getCerts.Arn}/invocations
+              responses: {}
+          /addItem:
+            post:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${addItem.Arn}/invocations
+              responses: {}
+          /updateItem:
+            put:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${updateItem.Arn}/invocations
+              responses: {}
+      EndpointConfiguration: REGIONAL
+      TracingEnabled: true
+      Cors:
+        AllowHeaders: '''Authorization,Content-Type'''
+        AllowOrigin: '''*'''
+Parameters:
+  StackTagName:
+    Type: String
+    Description: Stack Name (injected by Stackery at deployment time)
+  EnvironmentTagName:
+    Type: String
+    Description: Environment Name (injected by Stackery at deployment time)
+  EnvironmentAPIGatewayStageName:
+    Type: String
+    Description: Environment name used for API Gateway Stage names (injected by Stackery at deployment time)
