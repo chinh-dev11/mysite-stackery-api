@@ -3,5 +3,9 @@
   "version": "1.0.0",
   "devDependencies": {
     "aws-sdk": "~2"
+  },
+  "dependencies": {
+    "dynamodb-lib": "file:~/Dev/Personal/mysite-stackery-api/libs/dynamodb",
+    "response-lib": "file:~/Dev/Personal/mysite-stackery-api/libs/response"
   }
 }

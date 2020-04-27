@@ -1,0 +1,259 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Outputs:
+  DeploymentHistoryTag:
+    Description: Stackery Deployment History Tag
+    Value: 2DMZBJ
+Parameters:
+  EnvironmentAPIGatewayStageName:
+    Default: dev
+    Description: Environment name used for API Gateway Stage names (injected by Stackery
+      at deployment time)
+    Type: String
+  EnvironmentTagName:
+    Default: dev
+    Description: Environment Name (injected by Stackery at deployment time)
+    Type: String
+  StackTagName:
+    Default: mysite-stackery
+    Description: Stack Name (injected by Stackery at deployment time)
+    Type: String
+Resources:
+  DeploymentMarkerTag2DMZBJ:
+    Type: AWS::CloudFormation::WaitConditionHandle
+  addItem:
+    DependsOn: DeploymentMarkerTag2DMZBJ
+    Properties:
+      CodeUri: s3://stackery-assetsbucket-pt4goahxsjl9/deployments/dev/mysite-stackery/functions/5e6909892190486f43d62963b89ea4bc
+      Description:
+        Fn::Sub:
+        - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
+        - ResourceName: addItem
+      Environment:
+        Variables:
+          TABLE_ARN:
+            Fn::GetAtt:
+            - mysiteTable
+            - Arn
+          TABLE_NAME:
+            Ref: mysiteTable
+      Events:
+        mysiteStackeryApiPOSTaddItem:
+          Properties:
+            Method: POST
+            Path: /addItem
+            RestApiId:
+              Ref: mysiteStackeryApi
+          Type: Api
+      FunctionName:
+        Fn::Sub: ${AWS::StackName}-addItem
+      Handler: index.handler
+      MemorySize: 3008
+      Policies:
+      - AWSXrayWriteOnlyAccess
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: mysiteTable
+      Runtime: nodejs12.x
+      Timeout: 30
+      Tracing: Active
+    Type: AWS::Serverless::Function
+  getApps:
+    DependsOn: DeploymentMarkerTag2DMZBJ
+    Properties:
+      CodeUri: s3://stackery-assetsbucket-pt4goahxsjl9/deployments/dev/mysite-stackery/functions/5ebe812a8178a7738274bca2eb54b5cc
+      Description:
+        Fn::Sub:
+        - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
+        - ResourceName: getApps
+      Environment:
+        Variables:
+          TABLE_ARN:
+            Fn::GetAtt:
+            - mysiteTable
+            - Arn
+          TABLE_NAME:
+            Ref: mysiteTable
+      Events:
+        mysiteStackeryApiGETapps:
+          Properties:
+            Method: GET
+            Path: /apps
+            RestApiId:
+              Ref: mysiteStackeryApi
+          Type: Api
+      FunctionName:
+        Fn::Sub: ${AWS::StackName}-getApps
+      Handler: index.handler
+      MemorySize: 3008
+      Policies:
+      - AWSXrayWriteOnlyAccess
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: mysiteTable
+      Runtime: nodejs12.x
+      Timeout: 30
+      Tracing: Active
+    Type: AWS::Serverless::Function
+  getCerts:
+    DependsOn: DeploymentMarkerTag2DMZBJ
+    Properties:
+      CodeUri: s3://stackery-assetsbucket-pt4goahxsjl9/deployments/dev/mysite-stackery/functions/6ba3b4b4d9cfd6fb062bc74187ef3709
+      Description:
+        Fn::Sub:
+        - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
+        - ResourceName: getCerts
+      Environment:
+        Variables:
+          TABLE_ARN:
+            Fn::GetAtt:
+            - mysiteTable
+            - Arn
+          TABLE_ARN_2:
+            Fn::GetAtt:
+            - mysiteTable
+            - Arn
+          TABLE_NAME:
+            Ref: mysiteTable
+          TABLE_NAME_2:
+            Ref: mysiteTable
+      Events:
+        mysiteStackeryApiGETcerts:
+          Properties:
+            Method: GET
+            Path: /certs
+            RestApiId:
+              Ref: mysiteStackeryApi
+          Type: Api
+      FunctionName:
+        Fn::Sub: ${AWS::StackName}-getCerts
+      Handler: index.handler
+      MemorySize: 3008
+      Policies:
+      - AWSXrayWriteOnlyAccess
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: mysiteTable
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: mysiteTable
+      Runtime: nodejs12.x
+      Timeout: 30
+      Tracing: Active
+    Type: AWS::Serverless::Function
+  mysiteStackeryApi:
+    DependsOn: DeploymentMarkerTag2DMZBJ
+    Properties:
+      Cors:
+        AllowHeaders: '''Authorization,Content-Type'''
+        AllowOrigin: '''*'''
+      DefinitionBody:
+        info: {}
+        paths:
+          /addItem:
+            post:
+              responses: {}
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${addItem.Arn}/invocations
+          /apps:
+            get:
+              responses: {}
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${getApps.Arn}/invocations
+          /certs:
+            get:
+              responses: {}
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${getCerts.Arn}/invocations
+          /updateItem:
+            put:
+              responses: {}
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${updateItem.Arn}/invocations
+        swagger: '2.0'
+      EndpointConfiguration: REGIONAL
+      Name:
+        Fn::Sub:
+        - ${ResourceName} From Stack ${StackTagName} Environment ${EnvironmentTagName}
+        - ResourceName: mysiteStackeryApi
+      StageName:
+        Ref: EnvironmentAPIGatewayStageName
+      TracingEnabled: true
+    Type: AWS::Serverless::Api
+  mysiteTable:
+    DependsOn: DeploymentMarkerTag2DMZBJ
+    Properties:
+      AttributeDefinitions:
+      - AttributeName: Section
+        AttributeType: S
+      - AttributeName: DateCompleted
+        AttributeType: S
+      - AttributeName: Type
+        AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      GlobalSecondaryIndexes:
+      - IndexName: TypeIndex
+        KeySchema:
+        - AttributeName: Type
+          KeyType: HASH
+        - AttributeName: DateCompleted
+          KeyType: RANGE
+        Projection:
+          ProjectionType: ALL
+      KeySchema:
+      - AttributeName: Section
+        KeyType: HASH
+      - AttributeName: DateCompleted
+        KeyType: RANGE
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+    Type: AWS::DynamoDB::Table
+  updateItem:
+    DependsOn: DeploymentMarkerTag2DMZBJ
+    Properties:
+      CodeUri: s3://stackery-assetsbucket-pt4goahxsjl9/deployments/dev/mysite-stackery/functions/32103c5f93ea081d6794270d57400c59
+      Description:
+        Fn::Sub:
+        - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
+        - ResourceName: updateItem
+      Environment:
+        Variables:
+          TABLE_ARN:
+            Fn::GetAtt:
+            - mysiteTable
+            - Arn
+          TABLE_NAME:
+            Ref: mysiteTable
+      Events:
+        mysiteStackeryApiPUTupdateItem:
+          Properties:
+            Method: PUT
+            Path: /updateItem
+            RestApiId:
+              Ref: mysiteStackeryApi
+          Type: Api
+      FunctionName:
+        Fn::Sub: ${AWS::StackName}-updateItem
+      Handler: index.handler
+      MemorySize: 3008
+      Policies:
+      - AWSXrayWriteOnlyAccess
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: mysiteTable
+      Runtime: nodejs12.x
+      Timeout: 30
+      Tracing: Active
+    Type: AWS::Serverless::Function
+Transform: AWS::Serverless-2016-10-31

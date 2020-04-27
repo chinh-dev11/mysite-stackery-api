@@ -1,5 +1,6 @@
 .stackery
 .aws-sam
 
+node_modules/
 *old*
 *copy*
